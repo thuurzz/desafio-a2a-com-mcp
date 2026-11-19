@@ -4,3 +4,7 @@ __pycache__/
 node_modules/
 dist/
 *.log
+
+# build artifacts
+*.egg-info/
+servidor-mcp/servidor_mcp.egg-info/

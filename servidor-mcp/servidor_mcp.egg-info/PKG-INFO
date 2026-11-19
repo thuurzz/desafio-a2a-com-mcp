@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: servidor-mcp
-Version: 0.1.0
-Summary: Servidor MCP da Hill Valley Tech (A Ponte)
-Requires-Python: >=3.11
-Requires-Dist: mcp<3,>=2.3
