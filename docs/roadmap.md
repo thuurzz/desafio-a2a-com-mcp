@@ -13,7 +13,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 | 3 | Agente como host MCP: `tools/list` em runtime, resource, headers, `traceparent`, capability | 21–23 + log | — | ✅ concluída |
 | 4 | Agente como servidor A2A: card, `SendMessage`, `GetTask`, máquina de estados da Task | 21–26, 29–31, 35 | — | ✅ concluída |
 | 5 | A ponte: pausa da Task, `requestState` amarrado à Task, retry com id novo, recusa | 27–28, 32–34, 36 | 36 PASS | ✅ concluída |
-| 6 | Fechamento: README de entrega, execução em clone limpo, checklist item a item | 36/36 + exit 0 | 36 PASS | pendente |
+| 6 | Fechamento: README de entrega, execução em clone limpo, checklist item a item | 36/36 + exit 0 | 36 PASS | ✅ concluída |
 
 ## Fase 2 — MRTR (o coração do desafio) — ✅ concluída, ver docs/fase-2.md
 
@@ -60,7 +60,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 - Estado pausado é por Task: duas pausas simultâneas não trocam `requestState`.
 - Gate: PASS 27, 28, 32, 33, 34, 36 — e portanto 36/36.
 
-## Fase 6 — Fechamento
+## Fase 6 — Fechamento — ✅ concluída, ver docs/fase-6.md
 
 - Substituir o `README.md` do starter pela documentação de entrega (como rodar, onde a ponte acontece,
   decisões técnicas, saída do validador).
