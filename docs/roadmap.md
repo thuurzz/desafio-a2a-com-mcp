@@ -10,7 +10,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 |---|---|---|---|---|
 | 1 | Servidor MCP base: 3 tools, resource da política, guard do `_meta`, log stderr | 01–12, 20 | 13 PASS | ✅ concluída |
 | 2 | MRTR: `input_required`, elicitation form mode, `requestState` selado, `-32021`, retry | 13–19 | 20 PASS | ✅ concluída |
-| 3 | Agente como host MCP: `tools/list` em runtime, resource, headers, `traceparent`, capability | 21–23 + log | — | pendente |
+| 3 | Agente como host MCP: `tools/list` em runtime, resource, headers, `traceparent`, capability | 21–23 + log | — | ✅ concluída |
 | 4 | Agente como servidor A2A: card, `SendMessage`, `GetTask`, máquina de estados da Task | 21–26, 29–31, 35 | — | pendente |
 | 5 | A ponte: pausa da Task, `requestState` amarrado à Task, retry com id novo, recusa | 27–28, 32–34, 36 | 36 PASS | pendente |
 | 6 | Fechamento: README de entrega, execução em clone limpo, checklist item a item | 36/36 + exit 0 | 36 PASS | pendente |
@@ -30,7 +30,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
   `reservado: false` e `motivo`.
 - Gate: PASS 13 a 19 (com 01–12 e 20 já verdes).
 
-## Fase 3 — Agente como host MCP
+## Fase 3 — Agente como host MCP — ✅ concluída, ver docs/fase-3.md
 
 - Descobre as tools por `tools/list` em runtime; nada de catálogo hardcoded.
 - Lê `politica://uso` e extrai a versão da primeira linha (vai virar o campo `politica` do artifact).
