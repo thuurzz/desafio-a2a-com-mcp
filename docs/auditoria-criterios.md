@@ -32,7 +32,8 @@ Data da auditoria: 18/11/2026, branch `fase-6-entrega`, dois processos recém-in
 - [x] Retry com argumentos adulterados não toma efeito (o estado selado vence) → PASS 18
 - [x] Retry válido conclui mesmo com restart do servidor MCP no meio → **verificado à mão**:
   conflito (507 chars de estado) → `kill` do processo → subir de novo com a mesma chave → retry:
-  `resultType: complete | res-0003 | sala-mirante | reservado: True | politica: 2026-11-01`
+  `resultType: complete | res-0003 | sala-mirante | reservado: True | politica: 2026-11-01`.
+  Reconfirmado na versão final, depois de travar `mcp==2.3.0`.
 - [x] Chave de integridade vem de `REQUEST_STATE_SECRET` com ≥ 32 bytes, sem segredo no código →
   `servidor-mcp/views/app.py:23` lê de `os.environ`; sem a variável o processo sai com `exit=1` (reproduzido)
 - [x] `action: decline` conclui sem reservar e sem `isError` → PASS 19
