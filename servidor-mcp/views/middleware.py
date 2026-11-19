@@ -8,6 +8,9 @@ from typing import Any
 CHAVE_PROTOCOLO = "io.modelcontextprotocol/protocolVersion"
 CHAVE_CAPACIDADES = "io.modelcontextprotocol/clientCapabilities"
 
+# Códigos JSON-RPC que o enunciado exige que respondam com HTTP 400.
+CODIGOS_HTTP_400 = (-32021, -32602)
+
 logger = logging.getLogger("servidor-mcp.requests")
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stderr)
@@ -57,10 +60,61 @@ async def _responder_erro(send, id_request: Any, mensagem: str) -> None:
     await send({"type": "http.response.body", "body": corpo})
 
 
+def _eh_erro_protocolo(corpo: bytes) -> bool:
+    """True quando o corpo JSON-RPC traz um error.code que exige HTTP 400."""
+    try:
+        dados = json.loads(corpo)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    erro = dados.get("error") if isinstance(dados, dict) else None
+    return isinstance(erro, dict) and erro.get("code") in CODIGOS_HTTP_400
+
+
 class GuardaMetaMiddleware:
     def __init__(self, app, caminho: str = "/mcp") -> None:
         self.app = app
         self.caminho = caminho
+
+    async def _encaminhar(self, scope, receive, send) -> None:
+        """Encaminha ao app bufferizando a resposta e reescrevendo o status HTTP.
+
+        O corpo JSON-RPC so e conhecido depois que o transporte responde; aqui o
+        http.response.start fica retido e o status vira 400 quando o JSON-RPC
+        traz error.code em -32021/-32602.
+        """
+        status = 200
+        cabecalhos: list[tuple[bytes, bytes]] = []
+        corpo = b""
+
+        async def send_bufferizado(mensagem: dict) -> None:
+            nonlocal status, cabecalhos, corpo
+            tipo = mensagem.get("type")
+            if tipo == "http.response.start":
+                status = mensagem.get("status", 200)
+                cabecalhos = mensagem.get("headers", [])
+                return
+            if tipo == "http.response.body":
+                corpo += mensagem.get("body", b"")
+                if not mensagem.get("more_body", False):
+                    status_final = 400 if _eh_erro_protocolo(corpo) else status
+                    cabecalhos_final = [
+                        (n, v)
+                        for n, v in cabecalhos
+                        if n.lower() not in (b"content-length", b"transfer-encoding")
+                    ]
+                    cabecalhos_final.append((b"content-length", str(len(corpo)).encode()))
+                    await send(
+                        {
+                            "type": "http.response.start",
+                            "status": status_final,
+                            "headers": cabecalhos_final,
+                        }
+                    )
+                    await send({"type": "http.response.body", "body": corpo})
+                return
+            await send(mensagem)
+
+        await self.app(scope, receive, send_bufferizado)
 
     async def __call__(self, scope, receive, send) -> None:
         if scope.get("type") != "http" or scope.get("method") != "POST" or scope.get("path") != self.caminho:
@@ -113,4 +167,4 @@ class GuardaMetaMiddleware:
                 return {"type": "http.request", "body": corpo, "more_body": False}
             return await receive()
 
-        await self.app(scope, receber_replay, send)
+        await self._encaminhar(scope, receber_replay, send)

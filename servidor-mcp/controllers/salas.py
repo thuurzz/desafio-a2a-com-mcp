@@ -78,17 +78,23 @@ def _conflitos(sala: str, inicio: str, fim: str) -> list[Reserva]:
     ]
 
 
-def _alternativas(sala_id: str, inicio: str, fim: str) -> list[str]:
+def alternativas(sala_id: str, inicio: str, fim: str) -> list[str]:
+    """Salas livres no intervalo, com capacidade >= a pedida, no maximo tres.
+
+    Ordenadas por capacidade crescente e, em empate, por id alfabetico.
+    """
     sala = _achar_sala(sala_id)
     if sala is None:
         return []
-    return [
-        candidata.id
+    candidatas = [
+        candidata
         for candidata in _DADOS.salas
         if candidata.id != sala_id
         and candidata.capacidade >= sala.capacidade
         and not _conflitos(candidata.id, inicio, fim)
     ]
+    candidatas.sort(key=lambda c: (c.capacidade, c.id))
+    return [c.id for c in candidatas[:3]]
 
 
 def listar_salas() -> dict:
@@ -123,10 +129,10 @@ def reservar(sala: str, inicio: str, fim: str, responsavel: str) -> dict:
         return falha
 
     if _conflitos(sala, inicio, fim):
-        alternativas = _alternativas(sala, inicio, fim)
-        if not alternativas:
+        opcoes = alternativas(sala, inicio, fim)
+        if not opcoes:
             return _erro(ERRO_SEM_ALTERNATIVA)
-        return _erro("Conflito com alternativas: " + ", ".join(alternativas))
+        return {"alternativas": opcoes}
 
     reserva = Reserva(
         id=f"res-{_PROXIMO_ID:04d}",

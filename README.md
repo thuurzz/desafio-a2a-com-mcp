@@ -326,6 +326,27 @@ O artifact da Task concluída:
 }
 ```
 
+## Como rodar
+
+O servidor MCP sobe na porta `7301` (endpoint `/mcp`) e precisa de uma chave de
+integridade para selar o `requestState` do ciclo MRTR. A chave vem **sempre** de
+variável de ambiente e precisa ter pelo menos 32 bytes; sem ela, o processo falha
+na subida com uma mensagem clara (nenhum segredo é fixado no código).
+
+```bash
+# gere uma chave nova (nunca versionada):
+export REQUEST_STATE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+
+# suba o servidor:
+.venv/bin/python servidor-mcp/main.py
+```
+
+O `requestState` sobrevive a um restart porque viaja selado no próprio token
+(AES-256-GCM via `RequestStateBoundary`, com `ttl=900`), e não em memória do
+processo: o envelope carrega método, tool, digest dos argumentos e o payload, e o
+servidor só precisa da mesma `REQUEST_STATE_SECRET` para abrir o retry — mesmo
+depois de reiniciado.
+
 ## Critérios de Aceite
 
 Todos obrigatórios.

@@ -9,13 +9,13 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 | Fase | Escopo | Grupo do validador | Alvo | Status |
 |---|---|---|---|---|
 | 1 | Servidor MCP base: 3 tools, resource da política, guard do `_meta`, log stderr | 01–12, 20 | 13 PASS | ✅ concluída |
-| 2 | MRTR: `input_required`, elicitation form mode, `requestState` selado, `-32021`, retry | 13–19 | 20 PASS | ⏳ próxima |
+| 2 | MRTR: `input_required`, elicitation form mode, `requestState` selado, `-32021`, retry | 13–19 | 20 PASS | ✅ concluída |
 | 3 | Agente como host MCP: `tools/list` em runtime, resource, headers, `traceparent`, capability | 21–23 + log | — | pendente |
 | 4 | Agente como servidor A2A: card, `SendMessage`, `GetTask`, máquina de estados da Task | 21–26, 29–31, 35 | — | pendente |
 | 5 | A ponte: pausa da Task, `requestState` amarrado à Task, retry com id novo, recusa | 27–28, 32–34, 36 | 36 PASS | pendente |
 | 6 | Fechamento: README de entrega, execução em clone limpo, checklist item a item | 36/36 + exit 0 | 36 PASS | pendente |
 
-## Fase 2 — MRTR (o coração do desafio)
+## Fase 2 — MRTR (o coração do desafio) — ✅ concluída, ver docs/fase-2.md
 
 - Conflito em `reservar_sala` deixa de ser `isError` e passa a devolver `resultType: input_required`
   com **uma** entrada em `inputRequests` (`elicitation/create`, `mode: form`) e `requestState` opaco.
