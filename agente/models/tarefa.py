@@ -26,9 +26,13 @@ class EstadoTask(str, Enum):
     CONCLUIDA = "TASK_STATE_COMPLETED"
     FALHOU = "TASK_STATE_FAILED"
     CANCELADA = "TASK_STATE_CANCELED"
+    # Não-terminal: uma Task pausada por `input_required` ainda aceita `SendMessage`
+    # de continuação (`escolha=...`). Fica fora de `ESTADOS_TERMINAIS` por isso.
+    INPUT_REQUIRED = "TASK_STATE_INPUT_REQUIRED"
 
 
-# Estados terminais: a Task nunca volta a `WORKING` a partir deles.
+# Estados terminais: a Task nunca volta a `WORKING` a partir deles. `INPUT_REQUIRED`
+# é intencionalmente excluído — a pausa é retomável (fase 5, decisão 1 do design).
 ESTADOS_TERMINAIS = frozenset(
     {EstadoTask.CONCLUIDA, EstadoTask.FALHOU, EstadoTask.CANCELADA}
 )

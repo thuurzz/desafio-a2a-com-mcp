@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Mede o progresso: roda o validador e agrupa as 36 verificações por fase do roadmap.
+# Mede o progresso: sobe os DOIS processos do zero em portas isoladas, roda o validador
+# e agrupa as 36 verificações por fase do roadmap. Derruba tudo no fim.
 # Uso: ./scripts/progresso.sh [porta-mcp] [porta-agente]
 set -uo pipefail
 
@@ -9,14 +10,39 @@ cd "$RAIZ"
 PY="$RAIZ/.venv/bin/python"
 [ -x "$PY" ] || { echo "sem .venv na raiz (veja docs/fase-1.md)"; exit 1; }
 
-PORTA_MCP="${1:-${MCP_PORT:-7301}}"
-PORTA_AGENTE="${2:-${AGENTE_PORT:-7300}}"
+# Portas isoladas por default, para não brigar com instâncias já abertas
+# e garantir que a medição use processos recém-iniciados.
+PORTA_MCP="${1:-${MCP_PORT:-7391}}"
+PORTA_AGENTE="${2:-${AGENTE_PORT:-7390}}"
 
+LOG_MCP="$(mktemp -t mcp-progresso.XXXXXX.log)"
+LOG_AGENTE="$(mktemp -t agente-progresso.XXXXXX.log)"
 SAIDA="$(mktemp -t validador.XXXXXX.txt)"
-if ss -tln 2>/dev/null | grep -q ":$PORTA_MCP "; then
-  echo "aviso: já existe processo na porta $PORTA_MCP; o validador assume processos recém-iniciados,"
-  echo "       então o resultado pode variar se as reservas em memória já foram mexidas."
-fi
+
+export REQUEST_STATE_SECRET="${REQUEST_STATE_SECRET:-$("$PY" -c 'import secrets;print(secrets.token_hex(32))')}"
+export MCP_PORT="$PORTA_MCP"
+export A2A_PORT="$PORTA_AGENTE"
+# O agente precisa falar com o servidor DESTA execução, não com o default 7301.
+export MCP_URL="http://127.0.0.1:$PORTA_MCP/mcp"
+
+echo "subindo servidor MCP em :$PORTA_MCP e agente A2A em :$PORTA_AGENTE (processos novos)"
+"$PY" servidor-mcp/main.py >"$LOG_MCP" 2>&1 &
+PID_MCP=$!
+"$PY" agente/servidor.py >"$LOG_AGENTE" 2>&1 &
+PID_AGENTE=$!
+trap 'kill $PID_MCP $PID_AGENTE 2>/dev/null; wait $PID_MCP $PID_AGENTE 2>/dev/null' EXIT
+
+for _ in $(seq 1 60); do
+  if curl -s -o /dev/null "http://127.0.0.1:$PORTA_MCP/mcp" -X POST \
+      -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+      -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/list' \
+      -d '{"jsonrpc":"2.0","id":0,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{"elicitation":{"form":{}}}}}}' \
+     && curl -s -o /dev/null "http://127.0.0.1:$PORTA_AGENTE/.well-known/agent-card.json"; then
+    break
+  fi
+  sleep 0.25
+done
+
 "$PY" validador/validar.py --mcp "http://127.0.0.1:$PORTA_MCP" --agente "http://127.0.0.1:$PORTA_AGENTE" >"$SAIDA" 2>&1
 CODIGO=$?
 
