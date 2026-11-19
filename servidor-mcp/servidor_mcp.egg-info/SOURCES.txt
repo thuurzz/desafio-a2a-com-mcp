@@ -1,0 +1,15 @@
+pyproject.toml
+controllers/__init__.py
+controllers/salas.py
+models/__init__.py
+models/dados.py
+models/tipos.py
+servidor_mcp.egg-info/PKG-INFO
+servidor_mcp.egg-info/SOURCES.txt
+servidor_mcp.egg-info/dependency_links.txt
+servidor_mcp.egg-info/requires.txt
+servidor_mcp.egg-info/top_level.txt
+views/__init__.py
+views/app.py
+views/middleware.py
+views/servidor.py
