@@ -15,6 +15,7 @@ com a linha `alternativas: <ids>`, e amarra o `requestState` ao `taskId` no regi
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from agente.controllers.orquestrador import (
@@ -39,6 +40,45 @@ CODIGO_METODO_DESCONHECIDO = -32601
 # Sentinela de recusa na continuação `escolha=recusar` (espelha `OPCAO_RECUSAR` do
 # orquestrador, que a traduz em `action=decline` no retry).
 ESCOLHA_RECUSAR = "recusar"
+
+# Falha de transporte do MCP: mensagem determinística (sem detalhe de biblioteca, que
+# variaria entre versões e quebraria a regra de resposta estável da Task).
+MENSAGEM_MCP_INDISPONIVEL = (
+    "MCP indisponivel: nao foi possivel concluir a reserva (falha de conexao com o servidor MCP)"
+)
+
+
+def _absorver_cancelamento() -> None:
+    """Consome o cancelamento já entregue, para o handler chegar ao fim normalmente.
+
+    `Task.uncancel()` (3.11+) decrementa o contador que o `cancel()` armou. Sem isso
+    o próximo `await` do handler voltaria a levantar `CancelledError`.
+    """
+    tarefa = asyncio.current_task()
+    if tarefa is not None and hasattr(tarefa, "uncancel"):
+        while tarefa.cancelling():
+            tarefa.uncancel()
+
+
+async def _falar_com_mcp(espera: Any) -> Resultado:
+    """Executa a chamada ao MCP traduzindo qualquer falha de transporte em `Falhou`.
+
+    Por que este invólucro existe: o SDK do MCP roda o POST dentro de um task group do
+    anyio. Quando a conexão com o servidor falha, o grupo cancela a task que esperava a
+    resposta e o que escapa no ponto do `await` é `CancelledError` — que herda de
+    `BaseException`, então um `except Exception` não pega. Sem esta tradução o handler
+    morre e o cliente A2A recebe **HTTP 500**, em vez de uma Task em `TASK_STATE_FAILED`.
+
+    Absorver o cancelamento é seguro neste ponto porque o código que segue é síncrono:
+    nada mais é aguardado até o fim do handler.
+    """
+    try:
+        return await espera
+    except asyncio.CancelledError:
+        _absorver_cancelamento()
+        return Falhou(mensagem=MENSAGEM_MCP_INDISPONIVEL)
+    except Exception as exc:  # malformado, MCP fora por outra via, etc.
+        return Falhou(mensagem=str(exc))
 
 
 class ErroJsonRpc(Exception):
@@ -266,7 +306,7 @@ class ControladorA2A:
             tarefa.status = Status(EstadoTask.INPUT_REQUIRED, agente)
             return tarefa
 
-        resultado = await _continuar_async(pausa, valor)
+        resultado = await _falar_com_mcp(_continuar_async(pausa, valor))
         estado, texto_status, artifact = _traduzir(resultado)
         agente = _mensagem_agente(texto_status, tarefa)
         tarefa.history.append(_mensagem_usuario(mensagem))
@@ -289,10 +329,7 @@ class ControladorA2A:
         tarefa.history.append(_mensagem_usuario(mensagem))
         tarefa.status = Status(EstadoTask.TRABALHANDO, None)
 
-        try:
-            resultado = await _executar_pedido_async(texto, traceparent)
-        except Exception as exc:  # malformado, MCP fora, etc. → FAILED determinístico
-            resultado = Falhou(mensagem=str(exc))
+        resultado = await _falar_com_mcp(_executar_pedido_async(texto, traceparent))
 
         # Amarra o `requestState` (dentro do `Pausado`) ao id da Task ANTES de montar
         # o status — o registro é por Task, nunca global (decisão 2 do design).

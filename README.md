@@ -196,6 +196,13 @@ mudou de método ou veio com argumentos diferentes dos selados.
 - **Regra de negócio só no controller.** `servidor-mcp/controllers/salas.py` decide janela, duração,
   sobreposição e alternativas (máximo três, capacidade crescente, empate por id). O agente apenas
   traduz protocolo — não há regra de sala no lado A2A.
+- **MCP fora do ar fecha a Task, não derruba o request.** O SDK do MCP roda o POST dentro de um
+  task group do anyio: quando a conexão falha, o grupo cancela a task que espera a resposta e o que
+  escapa no `await` é `CancelledError` — que herda de `BaseException` e, portanto, **não** é pego por
+  `except Exception`. Sem tratamento, o handler morria e o cliente A2A recebia HTTP 500. O invólucro
+  `_falar_com_mcp` em `agente/controllers/a2a.py` traduz o cancelamento em `Falhou` e consome o
+  pedido com `Task.uncancel()`, então a resposta é 200 com a Task em `TASK_STATE_FAILED` e a
+  mensagem `MCP indisponivel: ...`. Vale para os dois caminhos: abertura e continuação de pausa.
 
 ## Saída do validador
 
@@ -290,4 +297,6 @@ necessário para o enunciado e nada disso foi implementado.
 - `docs/roadmap.md` — as fases, o escopo de cada uma e a régua de progresso (verificações do validador).
 - `docs/fase-1.md` … `docs/fase-5.md` — o que cada fase entregou, com as evidências reais.
 - `docs/sdk-mcp-2.3.0.md` — fatos verificados da API do SDK `mcp` 2.3.0 usados no projeto.
+- `docs/fix-mcp-fora.md` — o caso do MCP fora do ar: por que dava HTTP 500 e como a Task passa a
+  fechar em `TASK_STATE_FAILED`.
 - `openspec/changes/` — proposta, design, tasks e spec delta de cada fase.
