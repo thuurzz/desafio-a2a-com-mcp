@@ -297,4 +297,6 @@ necessário para o enunciado e nada disso foi implementado.
 - `docs/roadmap.md` — as fases, o escopo de cada uma e a régua de progresso (verificações do validador).
 - `docs/fase-1.md` … `docs/fase-5.md` — o que cada fase entregou, com as evidências reais.
 - `docs/sdk-mcp-2.3.0.md` — fatos verificados da API do SDK `mcp` 2.3.0 usados no projeto.
+- `docs/fix-mcp-fora.md` — o caso do MCP fora do ar: por que dava HTTP 500 e como a Task passa a
+  fechar em `TASK_STATE_FAILED`.
 - `openspec/changes/` — proposta, design, tasks e spec delta de cada fase.
