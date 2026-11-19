@@ -51,7 +51,7 @@ cd desafio-a2a-com-mcp
 
 # 1. ambiente e dependência (SDK oficial do MCP v2)
 uv venv .venv
-uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
+uv pip install --python .venv/bin/python 'mcp==2.3.0'
 
 # 2. pacotes do agente (models/, controllers/, views/) em modo editável
 uv pip install --python .venv/bin/python -e agente

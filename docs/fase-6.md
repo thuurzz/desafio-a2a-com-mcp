@@ -6,7 +6,7 @@ Branch: `fase-6-entrega`. Spec: `openspec/changes/fase-6-entrega/`.
 
 `README.md` substituído pela documentação da entrega, com as quatro seções exigidas:
 
-1. **Como rodar** — clone, `uv venv`, `uv pip install 'mcp>=2.3,<3'`, geração de `REQUEST_STATE_SECRET`,
+1. **Como rodar** — clone, `uv venv`, `uv pip install 'mcp==2.3.0'`, geração de `REQUEST_STATE_SECRET`,
    subida dos dois processos e execução do validador.
 2. **Onde a ponte acontece** — `agente/controllers/a2a.py` (tradução `Pausado` → `TASK_STATE_INPUT_REQUIRED`
    e `_pausas[taskId]`) e `agente/views/cliente.py` (retry com `inputResponses` + `requestState` ecoado),
@@ -24,7 +24,7 @@ seu próprio `export` (foi o furo que o Arthur apontou: um `export` não atraves
 ```
 $ git clone ~/desafio-a2a-com-mcp ~/.hermes/cache/scratch/clone2 && cd clone2
 $ uv venv .venv
-$ uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
+$ uv pip install --python .venv/bin/python 'mcp==2.3.0'
 $ uv pip install --python .venv/bin/python -e agente
 $ python3 -c 'import secrets; print(secrets.token_hex(32))' > .request_state_secret && chmod 600 .request_state_secret
 
