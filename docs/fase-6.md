@@ -16,35 +16,44 @@ Branch: `fase-6-entrega`. Spec: `openspec/changes/fase-6-entrega/`.
    separação entre erro de execução (`isError`) e erro de protocolo (`error`).
 4. **Saída do validador** — bloco com a execução real.
 
-## Verificação em clone limpo
+## Verificação em clone limpo (após a revisão do Arthur)
 
-Pasta vazia, seguindo **só o README**:
+Pasta vazia, seguindo **só o README** — com os dois processos em terminais separados, cada um com o
+seu próprio `export` (foi o furo que o Arthur apontou: um `export` não atravessa terminais):
 
 ```
-$ git clone ~/desafio-a2a-com-mcp ~/.hermes/cache/scratch/clone-limpo
-$ cd clone-limpo && uv venv .venv
+$ git clone ~/desafio-a2a-com-mcp ~/.hermes/cache/scratch/clone2 && cd clone2
+$ uv venv .venv
 $ uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
-$ export REQUEST_STATE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
-$ .venv/bin/python servidor-mcp/main.py &      # :7301
-$ .venv/bin/python agente/servidor.py &        # :7300
+$ uv pip install --python .venv/bin/python -e agente
+$ python3 -c 'import secrets; print(secrets.token_hex(32))' > .request_state_secret && chmod 600 .request_state_secret
+
+# terminal 1
+$ export REQUEST_STATE_SECRET="$(cat .request_state_secret)" && .venv/bin/python servidor-mcp/main.py
+# terminal 2
+$ export REQUEST_STATE_SECRET="$(cat .request_state_secret)" && .venv/bin/python agente/servidor.py
+
+# terminal 3
 $ .venv/bin/python validador/validar.py --agente http://localhost:7300 --mcp http://localhost:7301
 
 resumo: 36 passaram, 0 falharam, de 36 verificacoes
 exit=0
 ```
 
-E pelo script de medição, também no clone limpo:
+O cenário do erro também foi reproduzido de propósito:
 
 ```
-  OK Fase 1  servidor MCP base                      12/12
-  OK Fase 2  MRTR (elicitation + requestState)      7/7
-  OK Fase 1b conflito sem alternativa               1/1
-  OK Fase 4  agente A2A (card, SendMessage, GetTask) 6/6
-  OK Fase 5  a ponte (pausa, retomada, recusa)      10/10
-
-  TOTAL: 36/36 verificações passando
-  CRITÉRIO DE ACEITE ATINGIDO
+$ env -u REQUEST_STATE_SECRET .venv/bin/python servidor-mcp/main.py
+Erro: REQUEST_STATE_SECRET ausente ou com menos de 32 bytes. Gere com: python3 -c "import secrets; print(secrets.token_hex(32))" e exporte antes de subir o servidor.
+exit=1
 ```
+
+## Bug corrigido nesta fase
+
+`agente/pyproject.toml` declarava `packages = ["agente", "agente.models", "agente.controllers", "agente.views"]`,
+mas o código mora em `agente/models/`, `agente/controllers/` e `agente/views/` — ou seja, `pip install -e agente`
+instalaria um pacote sem módulos. Corrigido para `packages = ["models", "controllers", "views"]`, com
+`uv pip install -e agente` documentado no README e verificado em clone limpo (instala `agente-a2a-salas==0.1.0`).
 
 ## Checklist de entrega
 
@@ -56,10 +65,3 @@ E pelo script de medição, também no clone limpo:
 - [x] Nenhuma regra de negócio de sala no agente
 - [x] `requestState` opaco para o agente, assinado (AEAD) no servidor, com TTL de 15 min
 - [x] `traceparent` propagado e registrado no stderr
-
-## Bug conhecido encontrado no caminho
-
-O `agente/pyproject.toml` declara `packages = ["agente", ...]`, o que só faria sentido se o pacote
-estivesse em `agente/agente/`. Na prática o agente roda direto do repositório (`python agente/servidor.py`
-insere a raiz no `sys.path`), então a instalação editável do agente **não** é necessária nem está no
-README. Fica registrado em vez de escondido.
