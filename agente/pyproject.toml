@@ -1,0 +1,18 @@
+[project]
+name = "agente-a2a-salas"
+version = "0.1.0"
+description = "Agente A Ponte — host MCP por dentro, servidor A2A por fora"
+requires-python = ">=3.11"
+dependencies = ["mcp==2.3.0"]
+
+# O projeto mora dentro de agente/, então os pacotes de import são models/,
+# controllers/ e views/ relativos a esta pasta — não "agente.models" etc.
+# O entrypoint continua sendo `python agente/servidor.py` a partir da raiz;
+# instalar em modo editável só torna `models`, `controllers` e `views` importáveis.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["models", "controllers", "views"]

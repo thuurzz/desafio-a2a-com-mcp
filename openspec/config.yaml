@@ -1,0 +1,64 @@
+schema: spec-driven
+
+# Contexto do projeto — lido pelo agente ao gerar qualquer artefato do OpenSpec.
+context: |
+  Projeto: "A Ponte — um agente A2A com MCP por dentro" (MBA Eng. de Software com IA, curso de MCP e A2A).
+  Objetivo: entregar o desafio `devfullcycle/desafio-a2a-com-mcp` no fork `thuurzz/desafio-a2a-com-mcp`.
+  A fonte de verdade do requisito é o README.md do repositório, a pasta `exemplos/wire/` (11 pares
+  request/response reais) e `validador/validar.py` (36 verificações de conformidade). LEIA os três antes
+  de propor qualquer artefato.
+
+  Domínio (proposital e bobo): cinco salas de reunião da Hill Valley Tech, salas em `dados/salas.json`,
+  reservas em `dados/reservas.json`, política em `dados/politica-de-uso.md` (versao: 2026-11-01).
+  NÃO modelar negócio: nada de ORM, banco, camada de serviços. Regras: reserva entre 08:00 e 20:00 (-03:00),
+  duração máxima 2h, sem sobreposição na mesma sala.
+
+  Arquitetura obrigatória: DOIS processos separados.
+  1) `servidor-mcp/` — servidor MCP em Streamable HTTP na porta 7301, endpoint `/mcp`, spec rev 2026-07-28.
+     3 tools (listar_salas, consultar_disponibilidade, reservar_sala) + resource `politica://uso`.
+     MRTR: `input_required` com elicitation form mode + `requestState` assinado (HMAC/AEAD, chave de
+     `REQUEST_STATE_SECRET` com >= 32 bytes, expiração 5–30 min). Sem sessão, sem estado em memória
+     entre input_required e retry. Erros exatos do enunciado, registrados no stderr com método/id/traceparent.
+  2) `agente/` — agente sem LLM. Por dentro é host MCP (tools/list, resources/read, declara capability de
+     elicitation form, headers Mcp-Method/Mcp-Name/MCP-Protocol-Version, propaga traceparent no _meta do MCP).
+     Por fora é servidor A2A v1.0 (agent card em `/.well-known/agent-card.json`, `SendMessage` e `GetTask`
+     em JSON-RPC 2.0 sobre `/a2a`, porta 7300). A ponte: `input_required` do MCP vira
+     `TASK_STATE_INPUT_REQUIRED` na Task; o `requestState` fica amarrado à Task; o retry ao MCP usa um id
+     JSON-RPC NOVO e leva `inputResponses` + o `requestState` ecoado sem modificação.
+
+  Stack: Python 3.11+ (host em 3.14), SDK oficial `mcp` v2 (`mcp>=2.3,<3`), servidor ASGI (uvicorn/starlette
+  vêm como dependência do SDK). Dependências travadas em `pyproject.toml`. Sem LLM em nenhum caminho: a
+  interpretação do pedido é por regra, determinística. Pedido fixo:
+  `reservar sala=<id> inicio=<iso8601> fim=<iso8601> responsavel=<nome>`; resposta à pausa:
+  `escolha=<id>` ou `escolha=recusar`.
+
+  Portas e paths: agente em 7300 (`/a2a`, `/.well-known/agent-card.json`), MCP em 7301 (`/mcp`).
+  Parametrizáveis por env, com esses valores como default.
+
+  Layout Python exigido por Arthur: models/ (schemas, estado), controllers/ (regra de negócio, service),
+  views/ (router / superfície HTTP). `dados/`, `validador/` e `exemplos/` são INTOCÁVEIS (lidos, nunca editados).
+
+  Diagramas em Mermaid, nunca ASCII. Texto dos artefatos em pt-BR.
+
+# Regras por artefato
+rules:
+  proposal:
+    - "Sempre incluir uma seção 'Não-objetivos' citando o que o enunciado marca como fora de escopo."
+    - "Referenciar as verificações do validador que o escopo habilita (ex.: PASS 04, 05) e as que ficam pendentes."
+  design:
+    - "Incluir diagrama Mermaid de componentes e diagrama Mermaid de transição de estados da Task."
+    - "Explicitar onde o requestState é selado e verificado, e onde a Task pausa."
+  tasks:
+    - "Dividir em blocos verificáveis de no máximo 1 hora, cada um com um comando de verificação concreto."
+    - "Terminar com um bloco de execução do validador e leitura do stderr."
+
+# Orientação por operação
+operations:
+  apply:
+    guidance:
+      - "Não usar LLM no caminho de execução: decisões por regra, tudo determinístico."
+      - "Não alterar dados/, validador/ nem exemplos/."
+      - "Ao final, subir o servidor em background e provar com curl antes de dizer concluído."
+  archive:
+    guidance:
+      - "Registrar no README o que a fase entregou e o que ficou pendente."

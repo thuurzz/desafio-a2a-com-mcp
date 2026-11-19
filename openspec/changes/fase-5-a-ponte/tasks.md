@@ -1,0 +1,22 @@
+# Tasks
+
+## 1. Estado `INPUT_REQUIRED` e extração do `enum` (~40 min)
+
+- [x] 1.1 Adicionar `INPUT_REQUIRED = "TASK_STATE_INPUT_REQUIRED"` ao enum `EstadoTask` em `agente/models/tarefa.py`, **fora** de `ESTADOS_TERMINAIS`. **Verificação:** `.venv/bin/python -c "from agente.models.tarefa import EstadoTask, ESTADOS_TERMINAIS; print(EstadoTask.INPUT_REQUIRED.value, EstadoTask.INPUT_REQUIRED in ESTADOS_TERMINAIS)"` imprime `TASK_STATE_INPUT_REQUIRED False`.
+- [x] 1.2 Adicionar uma função pura que, dado um `Pausado`, devolve a lista de alternativas na ordem do `enum` (lendo `input_requests[chave]["params"]["requestedSchema"]["properties"]["sala"]["enum"]`, com fallback para `const` com uma alternativa). **Verificação:** `.venv/bin/python -c "from agente.controllers.a2a import alternativas_de; from agente.models.pedido import Pausado, Pedido; p=Pausado(pedido=Pedido('a','b','c','d'), versao_politica='2026-11-01', input_requests={'k':{'params':{'requestedSchema':{'properties':{'sala':{'enum':['sala-fusca','sala-mirante']}}}}}}, request_state='x', traceparent=None); print(alternativas_de(p))"` imprime `['sala-fusca', 'sala-mirante']`.
+
+## 2. Pausa: tradução e amarração do `requestState` (~50 min)
+
+- [x] 2.1 Trocar o braço `Pausado` de `_traduzir` em `agente/controllers/a2a.py` para devolver `(INPUT_REQUIRED, "alternativas: " + ", ".join(enum), None)`, e em `_abrir_e_executar` registrar `self._pausas[tarefa.id] = resultado` (novo `dict[str, Pausado]` no `__init__`) antes de montar o status. **Verificação:** com os dois processos no ar, `curl` do `exemplos/wire/08-a2a-send-message.json` devolve `status.state == "TASK_STATE_INPUT_REQUIRED"` e `status.message.parts[0].text` igual a `alternativas: sala-fusca, sala-mirante` (nada antes nem depois).
+- [x] 2.2 Conferir que nenhuma resposta A2A (card, `SendMessage`, `GetTask`) contém o `requestState`. **Verificação:** rodar o validador e confirmar `PASS 34` verde; adicionalmente `grep -R "$(cat /tmp/request_state.txt)" /tmp/*a2a*.log` não encontra nada (o valor nunca é serializado).
+
+## 3. Continuação `escolha=` no ramo `task_id is not None` (~60 min)
+
+- [x] 3.1 Implementar a continuação: no ramo `task_id is not None` de `_send_message`, se a Task estiver em `INPUT_REQUIRED`, ler `self._pausas[task_id]`, interpretar `escolha=<valor>` e — se o valor estiver no `enum` — chamar `continuar(pausa, valor)`, traduzir o resultado e registrar mensagem/artifact; se o valor for `recusar`, chamar `continuar(pausa, "recusar")`; caso contrário, manter `INPUT_REQUIRED` e repetir a linha de alternativas. **Verificação:** continuar a Task pausada do passo 2.1 com `escolha=sala-fusca` devolve `TASK_STATE_COMPLETED` com `artifacts[0].name == "reserva"` e `sala == "sala-fusca"` (espelhando `exemplos/wire/10`).
+- [x] 3.2 Garantir a escolha fora do `enum`: continuar com `escolha=sala-aquario` mantém `TASK_STATE_INPUT_REQUIRED` e repete `alternativas: sala-fusca, sala-mirante`. **Verificação:** `curl` da continuação devolve `status.state == "TASK_STATE_INPUT_REQUIRED"` e a mensagem de status igual à linha de alternativas.
+- [x] 3.3 Garantir `escolha=recusar`: continuar com `escolha=recusar` termina a Task em `TASK_STATE_CANCELED`. **Verificação:** `curl` devolve `status.state == "TASK_STATE_CANCELED"`.
+
+## 4. Fechamento com validador e stderr (~40 min)
+
+- [ ] 4.1 Matar e subir os dois processos do zero (servidor MCP com `REQUEST_STATE_SECRET` exportada e o agente em `A2A_PORT=7300`), e rodar o validador conferindo **36/36** verdes, com especial atenção às da ponte (27, 28, 29, 30, 32, 33, 36). **Verificação:** `.venv/bin/python validador/validar.py --agente http://localhost:7300 --mcp http://localhost:7301 2>&1 | tee /tmp/validador-fase5.txt` e `grep -c '^PASS' /tmp/validador-fase5.txt` é `36`, com `grep -c '^FAIL' /tmp/validador-fase5.txt` igual a `0` (saída do validador terminando com código 0).
+- [ ] 4.2 Ler o stderr do servidor MCP e provar o gate da ponte: o `tools/list` do agente aparece antes do primeiro `tools/call`, o `traceparent` traz o trace-id impresso pelo validador, e o par de `tools/call` da reserva que passou pela pausa tem **id de retry diferente** do id inicial. **Verificação:** com o stderr em `/tmp/servidor-mcp.log`, `grep -n 'tools/list' /tmp/servidor-mcp.log | head -1` aponta linha anterior à primeira de `grep -n 'tools/call' /tmp/servidor-mcp.log`, `grep -q '<trace-id impresso>' /tmp/servidor-mcp.log` confirma a propagação, e os dois ids JSON-RPC do par `tools/call` de `reservar_sala` (o que abriu a pausa e o retry) são distintos.
