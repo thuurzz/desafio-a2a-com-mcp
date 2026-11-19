@@ -8,3 +8,6 @@ dist/
 # build artifacts
 *.egg-info/
 servidor-mcp/servidor_mcp.egg-info/
+
+# segredo local do requestState (gerado pelo README)
+.request_state_secret

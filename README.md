@@ -43,6 +43,8 @@ token selado que o cliente devolve no retry. Nenhum dos dois protocolos tem sess
 
 Requisitos: Python 3.10+ (testado em 3.12 e 3.14), `uv` e `git`. Nenhuma dependência de LLM.
 
+### Passo 1 — clonar e criar o ambiente (uma vez)
+
 ```bash
 git clone https://github.com/thuurzz/desafio-a2a-com-mcp.git
 cd desafio-a2a-com-mcp
@@ -51,42 +53,85 @@ cd desafio-a2a-com-mcp
 uv venv .venv
 uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
 
-# 2. chave de integridade do requestState (nunca versionada)
-export REQUEST_STATE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+# 2. pacotes do agente (models/, controllers/, views/) em modo editável
+uv pip install --python .venv/bin/python -e agente
 ```
 
-Gere a `REQUEST_STATE_SECRET` **uma vez** e reutilize a mesma em cada subida se quiser que um
-`requestState` emitido antes de um restart continue válido depois dele. Ela não é chave de API: é o
-segredo de assinatura do token. Sem ela (ou com menos de 32 bytes) o servidor MCP **não sobe**.
+### Passo 2 — criar a chave do `requestState` (uma vez)
 
-Em dois terminais:
+O servidor MCP **não sobe** sem `REQUEST_STATE_SECRET`. Ela não é chave de API: é o segredo com que o
+`requestState` é cifrado. Gere uma e **guarde** — usar a mesma em cada subida é o que faz um
+`requestState` emitido antes de um restart continuar válido depois dele.
 
 ```bash
-# terminal 1 — servidor MCP (porta 7301, endpoint /mcp)
+# gera e salva num arquivo local, fora do git
+python3 -c 'import secrets; print(secrets.token_hex(32))' > .request_state_secret
+chmod 600 .request_state_secret
+```
+
+O `.gitignore` do repositório já cobre `.request_state_secret`, `.env`, `.venv/` e `*.egg-info/`. Se você
+usar outro nome de arquivo para a chave, confira que ele não vai ser commitado.
+
+> **Atenção — a variável existe só no terminal onde foi exportada.** Um `export` não atravessa terminais.
+> Se você subir o servidor MCP em um terminal e o agente em outro (é o recomendado, porque cada um
+> imprime log na própria tela), **cada terminal precisa do seu próprio `export`**. Esquecer isso é o
+> erro mais comum: o servidor MCP responde `Erro: REQUEST_STATE_SECRET ausente ou com menos de 32 bytes`
+> e encerra antes de escutar na porta.
+
+### Passo 3 — subir os dois processos (opção A: dois terminais, recomendada)
+
+```bash
+# ---------- terminal 1: servidor MCP (porta 7301, endpoint /mcp) ----------
+cd desafio-a2a-com-mcp
+export REQUEST_STATE_SECRET="$(cat .request_state_secret)"   # <-- obrigatório NESTE terminal
 .venv/bin/python servidor-mcp/main.py
 
-# terminal 2 — agente A2A (porta 7300, card em /.well-known/agent-card.json)
+# ---------- terminal 2: agente A2A (porta 7300) ----------
+cd desafio-a2a-com-mcp
+export REQUEST_STATE_SECRET="$(cat .request_state_secret)"   # <-- obrigatório NESTE terminal também
 .venv/bin/python agente/servidor.py
 ```
 
-Conferir o card:
+O agente não usa o segredo para nada; o `export` nele está ali só para o caso de você trocar os
+processos de terminal sem perceber. O que **não** pode faltar é o do terminal 1.
+
+### Passo 3 (opção B: um terminal só)
+
+Se preferir um terminal único, o `export` vale para os dois porque vêm do mesmo shell:
 
 ```bash
-curl -s http://localhost:7300/.well-known/agent-card.json | python3 -m json.tool
+cd desafio-a2a-com-mcp
+export REQUEST_STATE_SECRET="$(cat .request_state_secret)"   # vale para os dois processos abaixo
+.venv/bin/python agente/servidor.py > /tmp/agente.log 2>&1 &
+.venv/bin/python servidor-mcp/main.py                # fica em primeiro plano; Ctrl+C encerra só ele
 ```
 
-Rodar o validador (com os **dois processos recém-iniciados**):
+Para derrubar os dois: `pkill -f 'agente/servidor.py'` no outro terminal, ou
+`kill %1` se o job ainda estiver no mesmo shell.
+
+### Passo 4 — conferir e rodar o validador
 
 ```bash
+# card publicado
+curl -s http://localhost:7300/.well-known/agent-card.json | python3 -m json.tool
+
+# validador oficial (os dois processos precisam estar recém-iniciados)
 .venv/bin/python validador/validar.py --agente http://localhost:7300 --mcp http://localhost:7301
 ```
 
-Atalhos do repositório:
+O validador muta o estado em memória. Se rodar ele duas vezes seguidas no mesmo par de processos,
+verificações que dependem de salas livres falham — reinicie os dois antes de medir de novo.
+
+### Atalho: tudo de uma vez, em portas isoladas
+
+`./scripts/progresso.sh` sobe os dois processos do zero em `7391`/`7390`, com a chave gerada na hora,
+roda o validador e derruba tudo no final. Não precisa de `export` nem de terminal extra:
 
 ```bash
-./scripts/progresso.sh        # sobe os dois processos do zero em portas isoladas, roda o validador e resume por fase
-./scripts/testar-fase-1.sh    # curls pontuais do lado MCP (fase 1)
+./scripts/progresso.sh
 ```
+
+E `./scripts/testar-fase-1.sh` faz curls pontuais do lado MCP.
 
 Portas e caminhos são parametrizáveis: `MCP_PORT`/`MCP_PATH` no servidor MCP, `A2A_PORT`/`A2A_HOST`
 no agente, `MCP_URL` no cliente do agente.
