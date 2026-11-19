@@ -11,7 +11,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 | 1 | Servidor MCP base: 3 tools, resource da política, guard do `_meta`, log stderr | 01–12, 20 | 13 PASS | ✅ concluída |
 | 2 | MRTR: `input_required`, elicitation form mode, `requestState` selado, `-32021`, retry | 13–19 | 20 PASS | ✅ concluída |
 | 3 | Agente como host MCP: `tools/list` em runtime, resource, headers, `traceparent`, capability | 21–23 + log | — | ✅ concluída |
-| 4 | Agente como servidor A2A: card, `SendMessage`, `GetTask`, máquina de estados da Task | 21–26, 29–31, 35 | — | pendente |
+| 4 | Agente como servidor A2A: card, `SendMessage`, `GetTask`, máquina de estados da Task | 21–26, 29–31, 35 | — | ✅ concluída |
 | 5 | A ponte: pausa da Task, `requestState` amarrado à Task, retry com id novo, recusa | 27–28, 32–34, 36 | 36 PASS | pendente |
 | 6 | Fechamento: README de entrega, execução em clone limpo, checklist item a item | 36/36 + exit 0 | 36 PASS | pendente |
 
@@ -39,7 +39,7 @@ Cada fase = 1 change OpenSpec (`openspec/changes/<id>/`) + 1 branch + commits te
 - Propaga o `traceparent` do cliente A2A para todos os requests MCP da Task (span novo, trace-id igual).
 - Gate: log do servidor MCP mostrando o `tools/list` antes do primeiro `tools/call` e o trace-id do validador.
 
-## Fase 4 — Agente como servidor A2A
+## Fase 4 — Agente como servidor A2A — ✅ concluída, ver docs/fase-4.md
 
 - `GET /.well-known/agent-card.json` na forma da v1.0 (`supportedInterfaces` com `protocolBinding: JSONRPC`,
   `protocolVersion: 1.0`, skill `reservar-sala`).
