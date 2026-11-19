@@ -2,6 +2,27 @@
 
 Branch: `spec-fase-1-servidor-mcp` (partindo de `fase-1-servidor-mcp-base`, que já tem o commit do OpenSpec).
 
+## Como testar (um comando)
+
+```bash
+git clone -b spec-fase-1-servidor-mcp https://github.com/thuurzz/desafio-a2a-com-mcp.git
+cd desafio-a2a-com-mcp
+uv venv .venv
+uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
+uv pip install --python .venv/bin/python -e servidor-mcp
+./scripts/testar-fase-1.sh
+```
+
+O script sobe o servidor na `7301`, roda 6 curls comentados (tools/list, `_meta` incompleto, resource da política, reserva feliz, conflito, política violada), executa `validador/validar.py` e mostra o stderr. Ele mesmo derruba o processo no final.
+
+Para testar pela rede local (outro notebook/celular), suba com bind explícito:
+
+```bash
+MCP_HOST=0.0.0.0 MCP_PORT=7301 .venv/bin/python servidor-mcp/main.py
+```
+
+O SDK protege contra DNS rebinding e devolve HTTP `421` para Host não declarado; com `MCP_HOST` fora do loopback o app libera automaticamente as IPs da máquina (e aceita extras em `MCP_ALLOWED_HOSTS`).
+
 - [x] 01. Projeto `servidor-mcp/`: `pyproject.toml` lendo `dados/` em modo somente leitura (lê 5 salas, 2 reservas, política `2026-11-01`).
 - [x] 02. Streamable HTTP stateless em `/mcp` na porta `7301` (`json_response=True`, `stateless_http=True`) — `curl POST /mcp` devolve `200`.
 - [x] 03. `_meta` obrigatório por request: sem `protocolVersion` ou sem `clientCapabilities` → `-32602` + HTTP `400` (PASS 04 e 05).
