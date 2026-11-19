@@ -131,8 +131,6 @@ roda o validador e derruba tudo no final. Não precisa de `export` nem de termin
 ./scripts/progresso.sh
 ```
 
-E `./scripts/testar-fase-1.sh` faz curls pontuais do lado MCP.
-
 Portas e caminhos são parametrizáveis: `MCP_PORT`/`MCP_PATH` no servidor MCP, `A2A_PORT`/`A2A_HOST`
 no agente, `MCP_URL` no cliente do agente.
 
@@ -276,7 +274,7 @@ Trace-id do cliente A2A preservado, span-id novo por request, `tools/list` antes
 │   ├── models/                    Pedido, resultados, Task
 │   ├── controllers/               parser, orquestrador MCP, máquina de estados A2A
 │   └── views/                     cliente MCP (SDK) e app A2A (Starlette)
-├── scripts/                       progresso.sh e testar-fase-1.sh
+├── scripts/                       progresso.sh
 ├── docs/                          notas por fase, roadmap e fatos do SDK
 └── openspec/                      specs e changes (spec-driven development)
 ```

@@ -2,18 +2,20 @@
 
 Branch: `spec-fase-1-servidor-mcp` (partindo de `fase-1-servidor-mcp-base`, que já tem o commit do OpenSpec).
 
-## Como testar (um comando)
+## Como testar
+
+Na fase 1 o agente A2A ainda não existia, então só o lado MCP está em jogo. A forma atual de medir tudo
+(as seis fases) é `./scripts/progresso.sh`, que sobe os dois processos do zero em portas isoladas e roda o
+validador oficial — na fase 1 ele mostra 13/36, com as verificações 01 a 12 e a 20 verdes.
+
+Para inspecionar só o servidor MCP na mão (porta `7301`, endpoint `/mcp`), suba com o segredo exportado:
 
 ```bash
-git clone -b spec-fase-1-servidor-mcp https://github.com/thuurzz/desafio-a2a-com-mcp.git
-cd desafio-a2a-com-mcp
-uv venv .venv
-uv pip install --python .venv/bin/python 'mcp>=2.3,<3'
-uv pip install --python .venv/bin/python -e servidor-mcp
-./scripts/testar-fase-1.sh
+export REQUEST_STATE_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+.venv/bin/python servidor-mcp/main.py
 ```
 
-O script sobe o servidor na `7301`, roda 6 curls comentados (tools/list, `_meta` incompleto, resource da política, reserva feliz, conflito, política violada), executa `validador/validar.py` e mostra o stderr. Ele mesmo derruba o processo no final.
+e mande os requests de `exemplos/wire/01` a `05` com `curl`.
 
 Para testar pela rede local (outro notebook/celular), suba com bind explícito:
 
